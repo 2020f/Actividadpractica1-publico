@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -6,7 +7,11 @@ using UnityEngine.InputSystem;
 public class MovimientoJugador : MonoBehaviour
 {
     [SerializeField] private float velocidad = 5f;
-    [SerializeField] private float velocidadSalto = 8f;
+    [SerializeField] private float velocidadSalto = 8.5f;
+    [SerializeField] private TextMeshProUGUI contadorJuego;
+    [SerializeField, Min(1)] private int totalColeccionables = 5;
+
+    private int objetosRecogidos;
 
     private static readonly int Caminando = Animator.StringToHash("Caminando");
     private static readonly int Saltando = Animator.StringToHash("Saltando");
@@ -30,6 +35,9 @@ public class MovimientoJugador : MonoBehaviour
         filtroSuelo = new ContactFilter2D();
         filtroSuelo.useTriggers = false;
         filtroSuelo.SetNormalAngle(45f, 135f);
+
+        objetosRecogidos = 0;
+        ActualizarContador();
     }
 
     private void Update()
@@ -76,13 +84,13 @@ public class MovimientoJugador : MonoBehaviour
     {
         Vector2 velocidadActual = cuerpo.linearVelocity;
 
-        // Movimiento horizontal.
+        // Movimiento horizontal por ahora si .
         velocidadActual.x = direccionHorizontal * velocidad;
 
         // Comprobar si una superficie sostiene al personaje.
         bool enSuelo = cuerpo.IsTouching(filtroSuelo);
 
-        // Saltar solamente estando apoyado y sin estar subiendo.
+        // Saltar solamente estando apoyado  sin estar subiendo.
         if (saltoSolicitado && enSuelo && velocidadActual.y <= 0.1f)
         {
             velocidadActual.y = velocidadSalto;
@@ -97,7 +105,35 @@ public class MovimientoJugador : MonoBehaviour
         animador.SetBool(Saltando, estaSaltando);
         animador.SetBool(Caminando, !estaSaltando && direccionHorizontal != 0f);
 
-        // Cada pulsacion se procesa una sola vez.
+        // Cada pulsacion se procesa una sola vez y nitido .
         saltoSolicitado = false;
+    }
+
+    private void OnTriggerEnter2D(Collider2D otro)
+    {
+        if (otro == null || !otro.gameObject.activeInHierarchy ||
+            !otro.CompareTag("Collectible") ||
+            otro.gameObject.layer != LayerMask.NameToLayer("Collectibles"))
+        {
+            return;
+        }
+
+        // Desactivar de inmediato evita contar dos contactos del mismo objeto.
+        otro.gameObject.SetActive(false);
+        objetosRecogidos++;
+        ActualizarContador();
+
+        if (Application.isPlaying)
+        {
+            Destroy(otro.gameObject);
+        }
+    }
+
+    private void ActualizarContador()
+    {
+        if (contadorJuego != null)
+        {
+            contadorJuego.text = $"Objetos: {objetosRecogidos} / {totalColeccionables}";
+        }
     }
 }

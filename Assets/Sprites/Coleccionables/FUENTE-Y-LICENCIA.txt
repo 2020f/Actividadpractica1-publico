@@ -1,0 +1,20 @@
+Coleccionables - Practica 3
+
+Autor y distribuidor: Kenney (https://kenney.nl)
+Paquete: Food Kit (2.0)
+Pagina oficial: https://kenney.nl/assets/food-kit
+Archivo original: https://kenney.nl/media/pages/assets/food-kit/83086fa91c-1719418518/kenney_food-kit.zip
+Licencia: Creative Commons Zero (CC0 1.0), dominio publico.
+Texto original de la licencia: Kenney-License.txt
+Licencia oficial: https://creativecommons.org/publicdomain/zero/1.0/
+
+Se usan los PNG transparentes incluidos en Previews del paquete oficial.
+Cada imagen conserva sus pixeles originales (64 x 64); solo se cambio el nombre.
+No se incluyen ni se necesitan los modelos 3D del paquete.
+
+Archivo local       Archivo original
+Cake.png            Previews/cake-birthday.png
+Coffee.png          Previews/cup-coffee.png
+Cookie.png          Previews/cookie-chocolate.png
+Burger.png          Previews/burger-cheese.png
+Candy.png           Previews/lollypop.png
