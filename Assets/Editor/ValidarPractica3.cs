@@ -328,6 +328,91 @@ public static class ValidarPractica3
             simulation.Expect("Salto", false, true, "pared lateral no cuenta como suelo");
             Check(Mathf.Abs(simulation.Body.linearVelocity.y) < 0.001f && Mathf.Abs(simulation.Body.position.y - wallHeight) < 0.02f,
                   "Estar contra una pared no permite saltar sin apoyo inferior.");
+
+            // Mantener la direccion contra un lateral no debe anular la gravedad.
+            // Se prueba a ambos lados, con la gravedad real y sin pulsar salto.
+            foreach (int direction in new[] { -1, 1 })
+            {
+                Key key = direction < 0 ? Key.A : Key.D;
+                wall.transform.position = new Vector3(direction * 2, 4, 0);
+                simulation.Reset(new Vector2(direction * 1.17f, 3));
+                float initialHeight = simulation.Body.position.y;
+                simulation.Steps(10, key);
+                string side = direction < 0 ? "izquierda" : "derecha";
+                Check(simulation.Collider.IsTouching(wallCollider), "Caida contra pared " + side + ": contacto real sostenido.");
+                Check(simulation.Body.position.y < initialHeight - 0.2f && simulation.Body.linearVelocity.y < -2,
+                      "Presionar la pared " + side + " no debe dejar al jugador suspendido.");
+            }
+            wall.SetActive(false);
+
+            // Reproducir la esquina del piso fino usando su geometria y sus
+            // componentes reales; no sustituirlo por una pared de prueba.
+            GameObject sourcePlatform = sourceScene.GetRootGameObjects().SingleOrDefault(g => g.name == "Plataforma1");
+            Check(sourcePlatform != null, "Existe Plataforma1 para reproducir las esquinas reales del nivel.");
+            if (sourcePlatform != null)
+            {
+                GameObject ledge = Object.Instantiate(sourcePlatform);
+                ledge.name = "Esquina_Validacion";
+                SceneManager.MoveGameObjectToScene(ledge, testScene);
+                foreach (Transform part in ledge.GetComponentsInChildren<Transform>(true)) part.gameObject.layer = testLayer;
+                ledge.transform.position = new Vector3(0, 3, 0);
+                Physics2D.SyncTransforms();
+                var ledgeCollider = ledge.GetComponent<BoxCollider2D>();
+                Check(ledgeCollider != null, "La plataforma clonada conserva su BoxCollider2D.");
+                if (ledgeCollider != null)
+                {
+                    foreach (int side in new[] { -1, 1 })
+                    {
+                        Key key = side < 0 ? Key.D : Key.A;
+                        Bounds bounds = ledgeCollider.bounds;
+                        float edge = side < 0 ? bounds.min.x : bounds.max.x;
+                        // Los pies comienzan 0.20 unidades bajo la superficie:
+                        // debe rozar el lateral y caer, sin engancharse al borde.
+                        simulation.Reset(new Vector2(edge + side * (simulation.Collider.size.x * 0.5f + 0.02f), bounds.max.y + 0.25f));
+                        float initialHeight = simulation.Body.position.y;
+                        simulation.Steps(10, key);
+                        string corner = side < 0 ? "izquierda" : "derecha";
+                        Check(simulation.Collider.IsTouching(ledgeCollider), "Esquina " + corner + ": contacto real con la plataforma fina.");
+                        Check(simulation.Body.position.y < initialHeight - 0.2f && simulation.Body.linearVelocity.y < -2,
+                              "La esquina " + corner + " del piso no debe dejar al jugador pegado al presionar hacia ella.");
+                    }
+
+                    // El primer salto tambien debe alcanzar el piso real: quitar
+                    // friccion evita colgarse, pero no compensa un salto corto.
+                    GameObject sourceGround = sourceScene.GetRootGameObjects().SingleOrDefault(g => g.name == "Suelo");
+                    Check(sourceGround != null, "Existe Suelo para validar el primer salto real del nivel.");
+                    if (sourceGround != null)
+                    {
+                        floor.SetActive(false);
+                        ledge.transform.position = sourcePlatform.transform.position;
+                        GameObject ground = Object.Instantiate(sourceGround);
+                        ground.name = "Suelo_Real_Validacion";
+                        SceneManager.MoveGameObjectToScene(ground, testScene);
+                        foreach (Transform part in ground.GetComponentsInChildren<Transform>(true)) part.gameObject.layer = testLayer;
+                        simulation.Reset(new Vector2(-6.2f, -3.27f));
+                        simulation.Steps(15);
+                        simulation.Step(Key.D, Key.Space);
+                        bool landedOnRealPlatform = false;
+                        float highestFeet = simulation.Collider.bounds.min.y;
+                        for (int i = 0; i < 45; i++)
+                        {
+                            simulation.Step(Key.D);
+                            highestFeet = Mathf.Max(highestFeet, simulation.Collider.bounds.min.y);
+                            Bounds platformBounds = ledgeCollider.bounds;
+                            if (simulation.Collider.IsTouching(ledgeCollider) &&
+                                simulation.Body.position.x > platformBounds.min.x &&
+                                simulation.Collider.bounds.min.y >= platformBounds.max.y - 0.03f &&
+                                simulation.Body.linearVelocity.y <= 0.1f)
+                            {
+                                landedOnRealPlatform = true;
+                                break;
+                            }
+                        }
+                        Debug.Log($"PRACTICA3 TRACE primer piso: altura maxima pies={highestFeet:F4}, superficie={ledgeCollider.bounds.max.y:F4}, aterriza={landedOnRealPlatform}.");
+                        Check(landedOnRealPlatform, "D+Space debe alcanzar y aterrizar sobre Plataforma1 desde el Suelo real, sin quedar contra su esquina.");
+                    }
+                }
+            }
             Debug.Log("PRACTICA3: assets, escena, teclado y fisica nativa: recorrido completado.");
         }
         finally
